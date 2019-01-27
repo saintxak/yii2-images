@@ -79,7 +79,13 @@ class ImageBehave extends Behavior
         $image->filePath = $pictureSubDir . '/' . $pictureFileName;
         $image->modelName = $this->getModule()->getShortClass($this->owner);
         $image->name = $name;
-        $image->order = count($this->owner->getImages()) + 1;
+
+        $old_images = $this->owner->getImages();
+        if (count($old_images) == 1 && $old_images[0] instanceof models\PlaceHolder){
+            $image->order = 1;
+        }else{
+            $image->order = count($old_images) + 1;
+        }
 
         $image->urlAlias = $this->getAlias($image);
 
@@ -253,6 +259,22 @@ class ImageBehave extends Behavior
     }
 
     /**
+     * @param $id
+     * @return yii\db\ActiveQuery
+     * @throws yii\base\Exception
+     */
+    public function getImageById($id){
+        if ($this->getModule()->className === null) {
+            $img = Image::findOne($id);
+        } else {
+            $class = $this->getModule()->className;
+            $img = $class::findOne($id);
+        }
+
+        return $img;
+    }
+
+    /**
      * Remove all model images
      */
     public function removeImages()
@@ -291,7 +313,10 @@ class ImageBehave extends Behavior
         if (preg_match('@\.@', $fileToRemove) and is_file($fileToRemove)) {
             unlink($fileToRemove);
         }
+        $order = $img->order;
         $img->delete();
+
+        $this->pathOrder($order);
         return true;
     }
 
@@ -308,6 +333,7 @@ class ImageBehave extends Behavior
         foreach ($images as $img){
             if ($img->order == $oldIndex){
                 $img->order = $newIndex;
+                $img->save();
                 continue;
             }
 
@@ -325,6 +351,14 @@ class ImageBehave extends Behavior
 
             $img->save();
         }
+    }
+
+    /**
+     * @param $removedIndex order index that was remove
+     * @return void
+     */
+    protected function pathOrder($removedIndex){
+        Image::updateAllCounters(['order'=>-1],['>','order', $removedIndex]);
     }
 
     private function getImagesFinder($additionWhere = false)
