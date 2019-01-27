@@ -79,6 +79,7 @@ class ImageBehave extends Behavior
         $image->filePath = $pictureSubDir . '/' . $pictureFileName;
         $image->modelName = $this->getModule()->getShortClass($this->owner);
         $image->name = $name;
+        $image->order = count($this->owner->getImages()) + 1;
 
         $image->urlAlias = $this->getAlias($image);
 
@@ -167,11 +168,17 @@ class ImageBehave extends Behavior
     /**
      * Returns model images
      * First image alwats must be main image
+     * @param bool $forceReload Reload image records from database
      * @return array|yii\db\ActiveRecord[]
      */
-    public function getImages()
+    public function getImages($forceReload=false)
     {
+        static $images = null;
+
+        if ($images && !$forceReload) return $images;
+
         $finder = $this->getImagesFinder();
+        $order = $this->getImagesOrder();
 
         if ($this->getModule()->className === null) {
             $imageQuery = Image::find();
@@ -180,9 +187,11 @@ class ImageBehave extends Behavior
             $imageQuery = $class::find();
         }
         $imageQuery->where($finder);
-        $imageQuery->orderBy(['isMain' => SORT_DESC, 'id' => SORT_ASC]);
+        $imageQuery->orderBy($order);
 
         $imageRecords = $imageQuery->all();
+        $images = $imageRecords;
+
         if(!$imageRecords && $this->getModule()->placeHolderPath){
             return [$this->getModule()->getPlaceHolder()];
         }
@@ -201,9 +210,12 @@ class ImageBehave extends Behavior
             $class = $this->getModule()->className;
             $imageQuery = $class::find();
         }
+
         $finder = $this->getImagesFinder(['isMain' => 1]);
+        $order = $this->getImagesOrder();
+
         $imageQuery->where($finder);
-        $imageQuery->orderBy(['isMain' => SORT_DESC, 'id' => SORT_ASC]);
+        $imageQuery->orderBy($order);
 
         $img = $imageQuery->one();
         if(!$img){
@@ -225,9 +237,12 @@ class ImageBehave extends Behavior
             $class = $this->getModule()->className;
             $imageQuery = $class::find();
         }
+
         $finder = $this->getImagesFinder(['name' => $name]);
+        $order = $this->getImagesOrder();
+
         $imageQuery->where($finder);
-        $imageQuery->orderBy(['isMain' => SORT_DESC, 'id' => SORT_ASC]);
+        $imageQuery->orderBy($order);
 
         $img = $imageQuery->one();
         if(!$img){
@@ -280,6 +295,38 @@ class ImageBehave extends Behavior
         return true;
     }
 
+    /**
+     * Reorder image by index
+     * @param $oldIndex old order index
+     * @param $newIndex new index for order
+     */
+    public function reorderImage($oldIndex, $newIndex){
+        if ($oldIndex == $newIndex) return;
+
+        $images = $this->owner->getImages();
+
+        foreach ($images as $img){
+            if ($img->order == $oldIndex){
+                $img->order = $newIndex;
+                continue;
+            }
+
+            if ($newIndex < $oldIndex){
+                if ($img->order >= $newIndex && $img->order < $oldIndex){
+                    $img->order += 1;
+                }
+            }
+
+            if ($newIndex > $oldIndex){
+                if ($img->order >= $oldIndex && $img->order <= $newIndex){
+                    $img->order -= 1;
+                }
+            }
+
+            $img->save();
+        }
+    }
+
     private function getImagesFinder($additionWhere = false)
     {
         $base = [
@@ -293,6 +340,27 @@ class ImageBehave extends Behavior
 
         return $base;
     }
+
+    private function getImagesOrder($additionOrder=false){
+        $base = [
+            'isMain'=>SORT_DESC,
+            'id'=>SORT_ASC,
+        ];
+
+        if ($this->getModule()->useCustomOrder){
+            $base = [
+                'order'=>SORT_ASC,
+            ];
+        }
+
+        if ($additionOrder){
+            $base = yii\helpers\BaseArrayHelper::merge($base,$additionOrder);
+        }
+
+        return $base;
+    }
+
+    private function getImagesCount(){}
 
     /** Make string part of image's url
      * @return string

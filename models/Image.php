@@ -10,6 +10,8 @@
  * @property integer $isMain
  * @property string $modelName
  * @property string $urlAlias
+ * @property string $name
+ * @property integer $order
  */
 
 namespace rico\yii2images\models;
@@ -283,7 +285,7 @@ class Image extends \yii\db\ActiveRecord
     {
         return [
             [['filePath', 'itemId', 'modelName', 'urlAlias'], 'required'],
-            [['itemId', 'isMain'], 'integer'],
+            [['itemId', 'isMain', 'order'], 'integer'],
             [['name'], 'string', 'max' => 80],
             [['filePath', 'urlAlias'], 'string', 'max' => 400],
             [['modelName'], 'string', 'max' => 150]
@@ -302,6 +304,7 @@ class Image extends \yii\db\ActiveRecord
             'isMain' => 'Is Main',
             'modelName' => 'Model Name',
             'urlAlias' => 'Url Alias',
+            'order' => 'Order position',
         ];
     }
 }
