@@ -22,6 +22,8 @@ class ImageBehave extends Behavior
     use ModuleTrait;
     public $createAliasMethod = false;
 
+    static protected $images = null;
+
     /**
      * @var ActiveRecord|null Model class, which will be used for storing image data in db, if not set default class(models/Image) will be used
      */
@@ -179,9 +181,7 @@ class ImageBehave extends Behavior
      */
     public function getImages($forceReload=false)
     {
-        static $images = null;
-
-        if ($images && !$forceReload) return $images;
+        if (self::$images && !$forceReload) return self::$images;
 
         $finder = $this->getImagesFinder();
         $order = $this->getImagesOrder();
@@ -196,7 +196,7 @@ class ImageBehave extends Behavior
         $imageQuery->orderBy($order);
 
         $imageRecords = $imageQuery->all();
-        $images = $imageRecords;
+        self::$images = $imageRecords;
 
         if(!$imageRecords && $this->getModule()->placeHolderPath){
             return [$this->getModule()->getPlaceHolder()];
@@ -292,6 +292,7 @@ class ImageBehave extends Behavior
             BaseFileHelper::removeDirectory($dirToRemove);
         }
 
+        self::$images = null;
     }
 
     /**
@@ -317,6 +318,7 @@ class ImageBehave extends Behavior
         $img->delete();
 
         $this->pathOrder($order);
+        self::$images = null;
         return true;
     }
 
